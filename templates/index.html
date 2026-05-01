@@ -770,7 +770,7 @@
      SCRIPTS
 ═══════════════════════════════════════════ -->
 <script>
-const API = 'http://127.0.0.1:5000';
+const API = '';
 let poolVal = 1;
 
 // ── Particles ──────────────────────────────
@@ -826,7 +826,7 @@ function setPool(v) {
 // ── Fetch metrics ──────────────────────────
 async function loadMetrics() {
   try {
-    const r = await fetch(`${API}/api/metrics`);
+    const r = await fetch('/api/metrics');
     const d = await r.json();
 
     // Hero stats
@@ -905,7 +905,7 @@ const chartDefaults = {
 
 async function loadCharts() {
   try {
-    const r = await fetch(`${API}/api/chart-data`);
+    const r = await fetch('/api/chart-data');
     const d = await r.json();
 
     // Scatter
@@ -983,7 +983,7 @@ async function loadCharts() {
 // ── Fetch raw data ──────────────────────────
 async function loadData() {
   try {
-    const r = await fetch(`${API}/api/raw-data`);
+    const r = await fetch('/api/raw-data');
     const d = await r.json();
     const priceIdx = d.columns.indexOf('Price_USD');
     const locIdx   = d.columns.indexOf('Location');
