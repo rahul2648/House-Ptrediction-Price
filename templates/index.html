@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AV House— AI Price Predictor</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ─────────────────────────────────────────
+       TOKENS
+    ───────────────────────────────────────── */
+    :root {
+      --bg:        #09090f;
+      --bg2:       #0f0f1a;
+      --bg3:       #15152a;
+      --card:      #12121f;
+      --border:    rgba(255,220,100,0.12);
+      --gold:      #f5c842;
+      --gold2:     #ffd700;
+      --amber:     #ff9f43;
+      --teal:      #00cec9;
+      --pink:      #fd79a8;
+      --text:      #f0ede6;
+      --muted:     #8a8598;
+      --success:   #55efc4;
+      --r:         16px;
+      --ff-serif:  'Playfair Display', serif;
+      --ff-sans:   'DM Sans', sans-serif;
+      --ff-mono:   'JetBrains Mono', monospace;
+    }
+
+    /* ─────────────────────────────────────────
+       RESET + BASE
+    ───────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--ff-sans);
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      cursor: default;
+    }
+    ::selection { background: var(--gold); color: #000; }
+
+    /* ─────────────────────────────────────────
+       CANVAS BACKGROUND
+    ───────────────────────────────────────── */
+    #particle-canvas {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .4;
+    }
+
+    /* ─────────────────────────────────────────
+       NAVBAR
+    ───────────────────────────────────────── */
+    nav {
+      position: fixed; top: 0; width: 100%;
+      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 4rem;
+      background: rgba(9,9,15,.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: all .3s;
+    }
+    .nav-logo {
+      font-family: var(--ff-serif);
+      font-size: 1.6rem; font-weight: 900;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a {
+      font-size: .85rem; font-weight: 500; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+      text-decoration: none; transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .nav-badge {
+      font-family: var(--ff-mono); font-size: .75rem;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      color: #000; padding: .3rem .8rem; border-radius: 100px;
+      font-weight: 600;
+    }
+
+    /* ─────────────────────────────────────────
+       HERO
+    ───────────────────────────────────────── */
+    #hero {
+      position: relative; min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 6rem 2rem 4rem;
+      z-index: 1;
+    }
+    .hero-eyebrow {
+      font-family: var(--ff-mono); font-size: .8rem;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 1.5rem;
+      opacity: 0; animation: fadeUp .6s .2s forwards;
+    }
+    .hero-title {
+      font-family: var(--ff-serif);
+      font-size: clamp(3rem, 8vw, 7rem);
+      font-weight: 900; line-height: 1.05;
+      margin-bottom: 1.5rem;
+      opacity: 0; animation: fadeUp .7s .4s forwards;
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--amber) 60%, var(--pink) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: 1.1rem; color: var(--muted); max-width: 520px;
+      line-height: 1.8; margin-bottom: 3rem;
+      opacity: 0; animation: fadeUp .7s .6s forwards;
+    }
+    .hero-cta {
+      display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+      opacity: 0; animation: fadeUp .7s .8s forwards;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      color: #000; font-weight: 700; font-size: .9rem;
+      padding: .9rem 2.2rem; border-radius: 100px;
+      border: none; cursor: pointer; letter-spacing: .05em;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(245,200,66,.35); }
+    .btn-outline {
+      background: transparent; color: var(--text);
+      font-weight: 600; font-size: .9rem;
+      padding: .9rem 2.2rem; border-radius: 100px;
+      border: 1px solid var(--border); cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* Stat pills */
+    .hero-stats {
+      display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;
+      margin-top: 4rem;
+      opacity: 0; animation: fadeUp .7s 1s forwards;
+    }
+    .stat-pill {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 1rem 1.8rem;
+      text-align: center;
+    }
+    .stat-pill .val {
+      font-family: var(--ff-mono); font-size: 1.5rem;
+      font-weight: 600; color: var(--gold);
+    }
+    .stat-pill .lbl { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+    /* Scroll indicator */
+    .scroll-hint {
+      position: absolute; bottom: 2.5rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      font-size: .72rem; letter-spacing: .15em; color: var(--muted); text-transform: uppercase;
+      opacity: 0; animation: fadeUp .7s 1.2s forwards;
+    }
+    .scroll-line {
+      width: 1px; height: 50px;
+      background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: scrollPulse 1.8s ease-in-out infinite;
+    }
+
+    /* ─────────────────────────────────────────
+       SECTION WRAPPER
+    ───────────────────────────────────────── */
+    section { position: relative; z-index: 1; }
+    .section-inner {
+      max-width: 1200px; margin: 0 auto;
+      padding: 5rem 2rem;
+    }
+    .section-label {
+      font-family: var(--ff-mono); font-size: .75rem;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: .8rem;
+    }
+    .section-title {
+      font-family: var(--ff-serif); font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 700; margin-bottom: 1rem; line-height: 1.2;
+    }
+    .section-desc { color: var(--muted); font-size: 1rem; max-width: 550px; line-height: 1.8; }
+
+    /* Divider */
+    .divider {
+      height: 1px; margin: 0 auto;
+      background: linear-gradient(to right, transparent, var(--gold), transparent);
+      opacity: .25;
+    }
+
+    /* ─────────────────────────────────────────
+       FEATURES SECTION
+    ───────────────────────────────────────── */
+    #features { background: var(--bg2); }
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem; margin-top: 3rem;
+    }
+    .feat-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 2rem;
+      transition: transform .3s, border-color .3s, box-shadow .3s;
+      position: relative; overflow: hidden;
+    }
+    .feat-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 0 0, rgba(245,200,66,.06), transparent 70%);
+      opacity: 0; transition: opacity .3s;
+    }
+    .feat-card:hover { transform: translateY(-6px); border-color: rgba(245,200,66,.35); box-shadow: 0 16px 40px rgba(0,0,0,.4); }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon { font-size: 2rem; margin-bottom: 1rem; }
+    .feat-title { font-weight: 700; font-size: 1.1rem; margin-bottom: .5rem; }
+    .feat-desc { color: var(--muted); font-size: .9rem; line-height: 1.7; }
+
+    /* ─────────────────────────────────────────
+       MODEL METRICS
+    ───────────────────────────────────────── */
+    #metrics { background: var(--bg); }
+    .metrics-layout {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 2rem; margin-top: 3rem;
+    }
+    @media(max-width:768px) { .metrics-layout { grid-template-columns: 1fr; } }
+
+    .metric-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 2rem;
+    }
+    .metric-box h3 { font-family: var(--ff-serif); font-size: 1.2rem; margin-bottom: 1.5rem; }
+
+    .metric-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: .8rem 0; border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .metric-row:last-child { border-bottom: none; }
+    .metric-key { font-size: .85rem; color: var(--muted); }
+    .metric-val { font-family: var(--ff-mono); font-size: 1rem; font-weight: 600; color: var(--gold); }
+
+    /* Accuracy gauge */
+    .accuracy-ring {
+      width: 160px; height: 160px; margin: 1rem auto;
+    }
+    .accuracy-center {
+      text-align: center;
+    }
+    .acc-num {
+      font-family: var(--ff-mono); font-size: 2rem; font-weight: 700; color: var(--gold);
+    }
+    .acc-lbl { font-size: .75rem; color: var(--muted); margin-top: .3rem; }
+
+    /* Coeff bar */
+    .coeff-bar-wrap { margin-top: .6rem; }
+    .coeff-label { display: flex; justify-content: space-between; margin-bottom: .3rem; }
+    .coeff-label span:first-child { font-size: .8rem; color: var(--muted); }
+    .coeff-label span:last-child { font-family: var(--ff-mono); font-size: .8rem; color: var(--gold); }
+    .coeff-track { background: rgba(255,255,255,.06); border-radius: 100px; height: 6px; }
+    .coeff-fill { height: 100%; border-radius: 100px; transition: width 1.2s ease; }
+
+    /* ─────────────────────────────────────────
+       CHARTS SECTION
+    ───────────────────────────────────────── */
+    #charts { background: var(--bg2); }
+    .charts-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 2rem; margin-top: 3rem;
+    }
+    @media(max-width: 600px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 1.8rem;
+    }
+    .chart-card h3 { font-family: var(--ff-serif); font-size: 1.1rem; margin-bottom: 1.5rem; }
+    .chart-card canvas { max-height: 260px; }
+
+    /* ─────────────────────────────────────────
+       RAW DATA TABLE
+    ───────────────────────────────────────── */
+    #data-section { background: var(--bg); }
+    .table-wrapper {
+      margin-top: 2.5rem; border-radius: var(--r);
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    thead { background: rgba(245,200,66,.1); }
+    thead th {
+      font-family: var(--ff-mono); font-size: .72rem; font-weight: 600;
+      letter-spacing: .1em; text-transform: uppercase; color: var(--gold);
+      padding: 1rem .8rem; text-align: left; white-space: nowrap;
+    }
+    tbody tr { border-top: 1px solid rgba(255,255,255,.04); transition: background .15s; }
+    tbody tr:hover { background: rgba(245,200,66,.04); }
+    tbody td { padding: .7rem .8rem; color: var(--text); white-space: nowrap; }
+    .loc-badge {
+      font-size: .7rem; font-weight: 600; padding: .2rem .6rem; border-radius: 100px;
+    }
+    .loc-Premium { background: rgba(245,200,66,.18); color: var(--gold); }
+    .loc-Good    { background: rgba(0,206,201,.18); color: var(--teal); }
+    .loc-Average { background: rgba(253,121,168,.18); color: var(--pink); }
+    .loc-Economy { background: rgba(138,133,152,.18); color: var(--muted); }
+
+    .table-footer {
+      padding: .8rem 1.2rem; background: var(--card);
+      font-size: .8rem; color: var(--muted); display: flex; justify-content: space-between;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ─────────────────────────────────────────
+       PREDICT SECTION
+    ───────────────────────────────────────── */
+    #predict { background: var(--bg2); }
+    .predict-layout {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 3rem; margin-top: 3rem; align-items: start;
+    }
+    @media(max-width:900px) { .predict-layout { grid-template-columns: 1fr; } }
+
+    .form-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 2.5rem;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+    .form-group { display: flex; flex-direction: column; gap: .45rem; }
+    .form-group label {
+      font-size: .78rem; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .form-group input,
+    .form-group select {
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px; padding: .8rem 1rem;
+      color: var(--text); font-family: var(--ff-sans); font-size: .9rem;
+      outline: none; transition: border-color .2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245,200,66,.1); }
+    .form-group input::placeholder { color: var(--muted); }
+    select option { background: #1a1a2e; }
+
+    .form-full { grid-column: 1 / -1; }
+    .toggle-group { display: flex; gap: .6rem; }
+    .toggle-btn {
+      flex: 1; padding: .7rem; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.1); background: transparent;
+      color: var(--muted); cursor: pointer; font-size: .85rem;
+      transition: all .2s;
+    }
+    .toggle-btn.active { background: rgba(245,200,66,.15); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+
+    .predict-btn {
+      width: 100%; margin-top: 1.5rem; padding: 1rem;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      border: none; border-radius: 12px; cursor: pointer;
+      font-weight: 700; font-size: 1rem; color: #000;
+      transition: transform .2s, box-shadow .2s;
+      letter-spacing: .05em;
+    }
+    .predict-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(245,200,66,.35); }
+    .predict-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+    /* Result card */
+    .result-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 2.5rem;
+      position: sticky; top: 90px;
+    }
+    .result-placeholder {
+      text-align: center; padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    .result-placeholder .icon { font-size: 3.5rem; margin-bottom: 1rem; opacity: .5; }
+    .result-placeholder p { font-size: .9rem; line-height: 1.7; }
+
+    .result-reveal {
+      animation: fadeUp .5s ease forwards;
+    }
+    .result-label {
+      font-size: .75rem; font-weight: 600; letter-spacing: .15em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: .5rem;
+    }
+    .result-price {
+      font-family: var(--ff-serif); font-size: 3.2rem; font-weight: 900;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: .5rem;
+    }
+    .result-range {
+      font-size: .85rem; color: var(--muted); margin-bottom: 2rem;
+    }
+    .result-range strong { color: var(--text); }
+    .result-breakdown { display: flex; flex-direction: column; gap: .8rem; }
+    .breakdown-row { display: flex; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .breakdown-row:last-child { border-bottom: none; }
+    .breakdown-key { font-size: .83rem; color: var(--muted); }
+    .breakdown-val { font-family: var(--ff-mono); font-size: .83rem; font-weight: 600; }
+
+    /* ─────────────────────────────────────────
+       FOOTER
+    ───────────────────────────────────────── */
+    footer {
+      position: relative; z-index: 1;
+      background: var(--bg); border-top: 1px solid var(--border);
+      text-align: center; padding: 2.5rem;
+    }
+    .footer-logo { font-family: var(--ff-serif); font-size: 1.4rem; color: var(--gold); margin-bottom: .5rem; }
+    .footer-text { font-size: .8rem; color: var(--muted); }
+
+    /* ─────────────────────────────────────────
+       LOADING
+    ───────────────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid rgba(0,0,0,.3);
+      border-top-color: #000; border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: inline-block; margin-right: .6rem;
+    }
+
+    /* ─────────────────────────────────────────
+       KEYFRAMES
+    ───────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scrollPulse {
+      0%,100% { transform: scaleY(1); opacity: 1; }
+      50%      { transform: scaleY(.6); opacity: .4; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Fade-in on scroll */
+    .reveal {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity .7s ease, transform .7s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- Particle Canvas -->
+<canvas id="particle-canvas"></canvas>
+
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+═══════════════════════════════════════════ -->
+<nav>
+  <div class="nav-logo">AV House</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#metrics">Model</a>
+    <a href="#charts">Charts</a>
+    <a href="#data-section">Data</a>
+    <a href="#predict">Predict</a>
+  </div>
+  <div class="nav-badge">Linear Regression</div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════ -->
+<section id="hero">
+  <p class="hero-eyebrow">🏗 Machine Learning · Linear Regression · Real Estate</p>
+  <h1 class="hero-title">
+    Predict House<br/><span>Prices</span> with us
+  </h1>
+  <p class="hero-sub">
+    A production-grade ML model trained on 500 real estate data points.
+    Enter property details and get instant, accurate price predictions.
+  </p>
+  <div class="hero-cta">
+    <button class="btn-primary" onclick="document.getElementById('predict').scrollIntoView({behavior:'smooth'})">
+      🔮 Predict Now
+    </button>
+    <button class="btn-outline" onclick="document.getElementById('metrics').scrollIntoView({behavior:'smooth'})">
+      📊 View Model
+    </button>
+  </div>
+
+  <div class="hero-stats" id="hero-stats">
+    <div class="stat-pill"><div class="val" id="stat-r2">—</div><div class="lbl">R² Score</div></div>
+    <div class="stat-pill"><div class="val" id="stat-acc">—</div><div class="lbl">Accuracy</div></div>
+    <div class="stat-pill"><div class="val" id="stat-samples">500</div><div class="lbl">Data Points</div></div>
+    <div class="stat-pill"><div class="val" id="stat-mae">—</div><div class="lbl">Mean Abs Error</div></div>
+  </div>
+
+  <div class="scroll-hint">
+    <div class="scroll-line"></div>
+    scroll
+  </div>
+</section>
+
+<div class="divider" style="max-width:900px;"></div>
+
+<!-- ═══════════════════════════════════════════
+     FEATURES
+═══════════════════════════════════════════ -->
+<section id="features">
+  <div class="section-inner reveal">
+    <p class="section-label">Why AV House</p>
+    <h2 class="section-title">Engineered for Accuracy</h2>
+    <p class="section-desc">Built with sklearn's Linear Regression, real-world feature engineering, and full data transparency.</p>
+
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🧠</div>
+        <div class="feat-title">Linear Regression Model</div>
+        <div class="feat-desc">Trained on 500 data points with 9 engineered features. StandardScaler normalization for optimal performance.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📈</div>
+        <div class="feat-title">Interactive Charts</div>
+        <div class="feat-desc">5 real-time charts: scatter plots, feature importance, price distributions, and correlation analysis.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎯</div>
+        <div class="feat-title">Instant Predictions</div>
+        <div class="feat-desc">Enter 9 property features and get a price prediction with confidence intervals in milliseconds.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🔍</div>
+        <div class="feat-title">Full Transparency</div>
+        <div class="feat-desc">Raw dataset, model coefficients, R² score, RMSE, MAE — everything visible and explainable.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-title">Flask REST API</div>
+        <div class="feat-desc">Clean Flask backend with CORS support. JSON endpoints for predictions, metrics, data, and charts.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🏘</div>
+        <div class="feat-title">9 Feature Inputs</div>
+        <div class="feat-desc">Area, bedrooms, bathrooms, floors, age, garage, location, pool, school distance.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider" style="max-width:900px;"></div>
+
+<!-- ═══════════════════════════════════════════
+     MODEL METRICS
+═══════════════════════════════════════════ -->
+<section id="metrics">
+  <div class="section-inner reveal">
+    <p class="section-label">Model Performance</p>
+    <h2 class="section-title">Trained & Tested</h2>
+    <p class="section-desc">80/20 train-test split with feature scaling. Below are the live model statistics.</p>
+
+    <div class="metrics-layout">
+      <!-- Performance metrics -->
+      <div class="metric-box">
+        <h3>📊 Performance Metrics</h3>
+        <div id="metrics-list">
+          <div class="metric-row"><span class="metric-key">Loading…</span></div>
+        </div>
+
+        <div style="margin-top:2rem;">
+          <h3 style="font-family:var(--ff-serif);font-size:1.1rem;margin-bottom:1rem;">🎯 Model Accuracy</h3>
+          <div style="display:flex;align-items:center;gap:2rem;">
+            <svg class="accuracy-ring" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="65" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="14"/>
+              <circle id="gauge-circle" cx="80" cy="80" r="65" fill="none"
+                      stroke="url(#gaugeGrad)" stroke-width="14"
+                      stroke-linecap="round" stroke-dasharray="408.41"
+                      stroke-dashoffset="408.41"
+                      transform="rotate(-90 80 80)"
+                      style="transition:stroke-dashoffset 1.5s ease;"/>
+              <defs>
+                <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%"   stop-color="#f5c842"/>
+                  <stop offset="100%" stop-color="#ff9f43"/>
+                </linearGradient>
+              </defs>
+              <text x="80" y="74" text-anchor="middle"
+                    font-family="JetBrains Mono" font-size="22" font-weight="700" fill="#f5c842" id="gauge-text">—</text>
+              <text x="80" y="95" text-anchor="middle"
+                    font-family="DM Sans" font-size="11" fill="#8a8598">R² Score</text>
+            </svg>
+            <div>
+              <div style="font-family:var(--ff-mono);font-size:.85rem;color:var(--muted);margin-bottom:.5rem;">Train R²</div>
+              <div style="font-family:var(--ff-mono);font-size:1.2rem;color:var(--teal);" id="train-r2-val">—</div>
+              <div style="font-family:var(--ff-mono);font-size:.85rem;color:var(--muted);margin-top:1rem;margin-bottom:.5rem;">Test R²</div>
+              <div style="font-family:var(--ff-mono);font-size:1.2rem;color:var(--gold);" id="test-r2-val">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature coefficients -->
+      <div class="metric-box">
+        <h3>⚙️ Feature Coefficients</h3>
+        <div id="coeff-list">
+          <div style="color:var(--muted);font-size:.9rem;padding:1rem 0;">Loading coefficients…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider" style="max-width:900px;"></div>
+
+<!-- ═══════════════════════════════════════════
+     CHARTS
+═══════════════════════════════════════════ -->
+<section id="charts">
+  <div class="section-inner reveal">
+    <p class="section-label">Data Visualization</p>
+    <h2 class="section-title">Visual Analytics</h2>
+    <p class="section-desc">Explore the dataset and model through interactive charts.</p>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>📉 Actual vs Predicted ($K)</h3>
+        <canvas id="chart-scatter"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>🏆 Feature Importance</h3>
+        <canvas id="chart-importance"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>📊 Price Distribution</h3>
+        <canvas id="chart-dist"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>📍 Avg Price by Location</h3>
+        <canvas id="chart-location"></canvas>
+      </div>
+      <div class="chart-card" style="grid-column: 1/-1;">
+        <h3>🔗 Correlation with Price</h3>
+        <canvas id="chart-corr" style="max-height:200px;"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider" style="max-width:900px;"></div>
+
+<!-- ═══════════════════════════════════════════
+     RAW DATA
+═══════════════════════════════════════════ -->
+<section id="data-section">
+  <div class="section-inner reveal">
+    <p class="section-label">Dataset</p>
+    <h2 class="section-title">Raw Training Data</h2>
+    <p class="section-desc">First 50 rows of the 500-sample dataset used to train the model.</p>
+
+    <div class="table-wrapper">
+      <div class="table-scroll">
+        <table id="data-table">
+          <thead><tr id="table-head"></tr></thead>
+          <tbody id="table-body">
+            <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--muted);">Loading data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer">
+        <span id="table-info">—</span>
+        <span style="color:var(--gold);font-family:var(--ff-mono);font-size:.75rem;">Training Dataset</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider" style="max-width:900px;"></div>
+
+<!-- ═══════════════════════════════════════════
+     PREDICT
+═══════════════════════════════════════════ -->
+<section id="predict">
+  <div class="section-inner reveal">
+    <p class="section-label">AI Prediction</p>
+    <h2 class="section-title">Estimate Your Home</h2>
+    <p class="section-desc">Fill in the property details and get an instant price estimate with confidence range.</p>
+
+    <div class="predict-layout">
+      <!-- Form -->
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Area (sq ft)</label>
+            <input type="number" id="inp-area" placeholder="e.g. 2000" min="200" max="6000"/>
+          </div>
+          <div class="form-group">
+            <label>Bedrooms</label>
+            <input type="number" id="inp-bedrooms" placeholder="e.g. 3" min="1" max="8"/>
+          </div>
+          <div class="form-group">
+            <label>Bathrooms</label>
+            <input type="number" id="inp-bathrooms" placeholder="e.g. 2" min="1" max="6"/>
+          </div>
+          <div class="form-group">
+            <label>Floors</label>
+            <input type="number" id="inp-floors" placeholder="e.g. 2" min="1" max="5"/>
+          </div>
+          <div class="form-group">
+            <label>Age (years)</label>
+            <input type="number" id="inp-age" placeholder="e.g. 10" min="0" max="100"/>
+          </div>
+          <div class="form-group">
+            <label>Garage Spaces</label>
+            <input type="number" id="inp-garage" placeholder="e.g. 1" min="0" max="4"/>
+          </div>
+          <div class="form-group">
+            <label>School Distance (km)</label>
+            <input type="number" id="inp-school" placeholder="e.g. 2.5" step="0.1" min="0.1" max="20"/>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <select id="inp-location">
+              <option value="Premium">Premium</option>
+              <option value="Good">Good</option>
+              <option value="Average" selected>Average</option>
+              <option value="Economy">Economy</option>
+            </select>
+          </div>
+          <div class="form-group form-full">
+            <label>Swimming Pool</label>
+            <div class="toggle-group">
+              <button class="toggle-btn" id="pool-no" onclick="setPool(0)" style="">No Pool</button>
+              <button class="toggle-btn active" id="pool-yes" onclick="setPool(1)">Has Pool</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="predict-btn" id="predict-btn" onclick="runPrediction()">
+          🔮 Predict Price
+        </button>
+      </div>
+
+      <!-- Result -->
+      <div class="result-card" id="result-card">
+        <div class="result-placeholder" id="result-placeholder">
+          <div class="icon">🏠</div>
+          <p>Fill in the property details on the left and click <strong>Predict Price</strong> to get an AI-powered estimate.</p>
+        </div>
+        <div id="result-content" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">AV House</div>
+  <div class="footer-text">Built with Flask · scikit-learn · Chart.js &nbsp;|&nbsp; Linear Regression Model</div>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════ -->
+<script>
+const API = 'http://127.0.0.1:5000';
+let poolVal = 1;
+
+// ── Particles ──────────────────────────────
+const canvas = document.getElementById('particle-canvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+function resizeCanvas() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+for (let i = 0; i < 90; i++) {
+  particles.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: Math.random() * 1.5 + .5,
+    vx: (Math.random() - .5) * .4,
+    vy: (Math.random() - .5) * .4,
+    a: Math.random() * .5 + .2
+  });
+}
+function animParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = canvas.width;
+    if (p.x > canvas.width) p.x = 0;
+    if (p.y < 0) p.y = canvas.height;
+    if (p.y > canvas.height) p.y = 0;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(245,200,66,${p.a})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(animParticles);
+}
+animParticles();
+
+// ── Reveal on scroll ───────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: .12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Pool toggle ────────────────────────────
+function setPool(v) {
+  poolVal = v;
+  document.getElementById('pool-yes').classList.toggle('active', v === 1);
+  document.getElementById('pool-no').classList.toggle('active',  v === 0);
+}
+
+// ── Fetch metrics ──────────────────────────
+async function loadMetrics() {
+  try {
+    const r = await fetch(`${API}/api/metrics`);
+    const d = await r.json();
+
+    // Hero stats
+    document.getElementById('stat-r2').textContent  = d.r2;
+    document.getElementById('stat-acc').textContent = d.accuracy + '%';
+    document.getElementById('stat-mae').textContent = '$' + (d.mae/1000).toFixed(0) + 'K';
+
+    // Gauge
+    const circ = 2 * Math.PI * 65;
+    const pct  = d.r2;
+    document.getElementById('gauge-circle').style.strokeDashoffset = circ * (1 - pct);
+    document.getElementById('gauge-text').textContent = d.r2;
+    document.getElementById('train-r2-val').textContent = d.train_r2;
+    document.getElementById('test-r2-val').textContent  = d.r2;
+
+    // Metrics list
+    const rows = [
+      ['R² Score (Test)',   d.r2],
+      ['R² Score (Train)',  d.train_r2],
+      ['RMSE',             '$' + Number(d.rmse).toLocaleString()],
+      ['MAE',              '$' + Number(d.mae).toLocaleString()],
+      ['Training Samples', d.train_size],
+      ['Testing Samples',  d.test_size],
+      ['Total Data',       d.total_samples],
+      ['Intercept',        '$' + Number(d.intercept).toLocaleString()],
+    ];
+    document.getElementById('metrics-list').innerHTML =
+      rows.map(([k,v]) =>
+        `<div class="metric-row">
+           <span class="metric-key">${k}</span>
+           <span class="metric-val">${v}</span>
+         </div>`
+      ).join('');
+
+    // Coefficients
+    const coeff = d.coefficients;
+    const maxAbs = Math.max(...Object.values(coeff).map(Math.abs));
+    const colours = ['#f5c842','#ff9f43','#00cec9','#fd79a8','#a29bfe','#55efc4','#fdcb6e','#e17055','#74b9ff'];
+    let ci = 0;
+    document.getElementById('coeff-list').innerHTML =
+      Object.entries(coeff).map(([k, v]) => {
+        const pct  = (Math.abs(v) / maxAbs * 100).toFixed(1);
+        const col  = colours[ci++ % colours.length];
+        const sign = v >= 0 ? '+' : '';
+        return `<div class="coeff-bar-wrap">
+          <div class="coeff-label">
+            <span>${k.replace(/_/g,' ')}</span>
+            <span style="color:${col}">${sign}${v.toLocaleString()}</span>
+          </div>
+          <div class="coeff-track">
+            <div class="coeff-fill" style="width:0;background:${col};" data-w="${pct}"></div>
+          </div>
+        </div>`;
+      }).join('');
+
+    // Animate bars
+    setTimeout(() => {
+      document.querySelectorAll('.coeff-fill').forEach(el => {
+        el.style.width = el.dataset.w + '%';
+      });
+    }, 400);
+
+  } catch(e) { console.error('Metrics error', e); }
+}
+
+// ── Fetch charts ───────────────────────────
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: true,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color:'rgba(255,255,255,.05)' }, ticks: { color:'#8a8598', font:{size:10} } },
+    y: { grid: { color:'rgba(255,255,255,.05)' }, ticks: { color:'#8a8598', font:{size:10} } }
+  }
+};
+
+async function loadCharts() {
+  try {
+    const r = await fetch(`${API}/api/chart-data`);
+    const d = await r.json();
+
+    // Scatter
+    new Chart(document.getElementById('chart-scatter'), {
+      type: 'scatter',
+      data: {
+        datasets: [
+          { label:'Actual vs Predicted', data: d.scatter.actual.map((a,i)=>({x:a,y:d.scatter.predicted[i]})),
+            backgroundColor:'rgba(245,200,66,.35)', borderColor:'rgba(245,200,66,.8)', pointRadius:3 },
+          { label:'Perfect', data:[{x:0,y:0},{x:Math.max(...d.scatter.actual),y:Math.max(...d.scatter.actual)}],
+            type:'line', borderColor:'rgba(255,255,255,.2)', borderDash:[4,4], pointRadius:0 }
+        ]
+      },
+      options: { ...chartDefaults, scales:{
+        x:{ ...chartDefaults.scales.x, title:{display:true,text:'Actual ($K)',color:'#8a8598'} },
+        y:{ ...chartDefaults.scales.y, title:{display:true,text:'Predicted ($K)',color:'#8a8598'} }
+      }}
+    });
+
+    // Feature importance
+    new Chart(document.getElementById('chart-importance'), {
+      type: 'bar',
+      data: {
+        labels: d.feature_importance.labels,
+        datasets: [{ data: d.feature_importance.values,
+          backgroundColor: ['#f5c842','#ff9f43','#00cec9','#fd79a8','#a29bfe','#55efc4','#fdcb6e','#e17055','#74b9ff'],
+          borderRadius: 8 }]
+      },
+      options: { ...chartDefaults, indexAxis:'y' }
+    });
+
+    // Price distribution
+    new Chart(document.getElementById('chart-dist'), {
+      type: 'bar',
+      data: {
+        labels: d.price_distribution.labels,
+        datasets: [{ data: d.price_distribution.values,
+          backgroundColor:'rgba(245,200,66,.5)',
+          borderColor:'rgba(245,200,66,.8)', borderWidth:1, borderRadius:4 }]
+      },
+      options: { ...chartDefaults }
+    });
+
+    // Location avg price
+    const locColors = { Premium:'#f5c842', Good:'#00cec9', Average:'#fd79a8', Economy:'#8a8598' };
+    new Chart(document.getElementById('chart-location'), {
+      type: 'doughnut',
+      data: {
+        labels: d.price_by_location.labels,
+        datasets: [{ data: d.price_by_location.values,
+          backgroundColor: d.price_by_location.labels.map(l=>locColors[l]||'#8a8598'),
+          borderWidth:2, borderColor:'#12121f' }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:true,
+        plugins: { legend:{ display:true, position:'right', labels:{ color:'#8a8598', font:{size:11} } } }
+      }
+    });
+
+    // Correlation
+    const corrColors = d.correlation.values.map(v =>
+      v >= 0 ? `rgba(85,239,196,${Math.min(Math.abs(v)+.2,1)})` : `rgba(253,121,168,${Math.min(Math.abs(v)+.2,1)})`);
+    new Chart(document.getElementById('chart-corr'), {
+      type: 'bar',
+      data: {
+        labels: d.correlation.labels,
+        datasets: [{ data: d.correlation.values, backgroundColor: corrColors, borderRadius:6 }]
+      },
+      options: { ...chartDefaults }
+    });
+
+  } catch(e) { console.error('Charts error', e); }
+}
+
+// ── Fetch raw data ──────────────────────────
+async function loadData() {
+  try {
+    const r = await fetch(`${API}/api/raw-data`);
+    const d = await r.json();
+    const priceIdx = d.columns.indexOf('Price_USD');
+    const locIdx   = d.columns.indexOf('Location');
+
+    document.getElementById('table-head').innerHTML =
+      d.columns.map(c => `<th>${c.replace(/_/g,' ')}</th>`).join('');
+
+    document.getElementById('table-body').innerHTML =
+      d.data.map((row, ri) =>
+        `<tr>${row.map((cell, ci) => {
+          if (ci === priceIdx) return `<td style="color:var(--gold);font-family:var(--ff-mono);font-weight:600;">$${Number(cell).toLocaleString()}</td>`;
+          if (ci === locIdx)   return `<td><span class="loc-badge loc-${cell}">${cell}</span></td>`;
+          return `<td>${cell}</td>`;
+        }).join('')}</tr>`
+      ).join('');
+
+    document.getElementById('table-info').textContent =
+      `Showing 50 of ${d.total} rows`;
+
+  } catch(e) { console.error('Data error', e); }
+}
+
+// ── Predict ─────────────────────────────────
+async function runPrediction() {
+  const btn = document.getElementById('predict-btn');
+  const fields = {
+    area:       document.getElementById('inp-area').value,
+    bedrooms:   document.getElementById('inp-bedrooms').value,
+    bathrooms:  document.getElementById('inp-bathrooms').value,
+    floors:     document.getElementById('inp-floors').value,
+    age:        document.getElementById('inp-age').value,
+    garage:     document.getElementById('inp-garage').value,
+    school_dist:document.getElementById('inp-school').value,
+    location:   document.getElementById('inp-location').value,
+    pool:       poolVal
+  };
+
+  for (const [k,v] of Object.entries(fields)) {
+    if (k !== 'pool' && k !== 'location' && (!v || isNaN(v))) {
+      alert(`Please fill in all fields (${k})`); return;
+    }
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Calculating…';
+  document.getElementById('result-placeholder').style.display = 'none';
+  document.getElementById('result-content').style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/api/predict`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(fields)
+    });
+    const d = await res.json();
+
+    if (!d.success) throw new Error(d.error);
+
+    const perSqft = (d.price / parseFloat(fields.area)).toFixed(0);
+    const content = document.getElementById('result-content');
+    content.innerHTML = `
+      <div class="result-reveal">
+        <div class="result-label">Estimated Market Value</div>
+        <div class="result-price">${d.price_fmt}</div>
+        <div class="result-range">Range: <strong>${d.low_fmt}</strong> — <strong>${d.high_fmt}</strong></div>
+        <div class="result-breakdown">
+          <div class="breakdown-row"><span class="breakdown-key">Price / sq ft</span><span class="breakdown-val" style="color:var(--teal)">$${perSqft}</span></div>
+          <div class="breakdown-row"><span class="breakdown-key">Area</span><span class="breakdown-val">${Number(fields.area).toLocaleString()} sqft</span></div>
+          <div class="breakdown-row"><span class="breakdown-key">Bedrooms / Baths</span><span class="breakdown-val">${fields.bedrooms} bd / ${fields.bathrooms} ba</span></div>
+          <div class="breakdown-row"><span class="breakdown-key">Location Tier</span><span class="breakdown-val" style="color:var(--gold)">${fields.location}</span></div>
+          <div class="breakdown-row"><span class="breakdown-key">Pool</span><span class="breakdown-val" style="color:var(--pink)">${poolVal ? '✓ Yes' : '✗ No'}</span></div>
+          <div class="breakdown-row"><span class="breakdown-key">Age</span><span class="breakdown-val">${fields.age} yrs old</span></div>
+          <div class="breakdown-row"><span class="breakdown-key">Confidence Interval</span><span class="breakdown-val" style="color:var(--success)">±12%</span></div>
+        </div>
+      </div>`;
+    content.style.display = 'block';
+
+  } catch(e) {
+    document.getElementById('result-placeholder').innerHTML =
+      `<div class="icon">⚠️</div><p style="color:#fd79a8">${e.message || 'Prediction failed. Make sure Flask server is running.'}</p>`;
+    document.getElementById('result-placeholder').style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔮 Predict Price';
+}
+
+// ── Init ───────────────────────────────────
+(async () => {
+  await loadMetrics();
+  await loadData();
+  await loadCharts();
+})();
+</script>
+</body>
+</html>
