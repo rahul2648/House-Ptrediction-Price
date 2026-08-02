@@ -5,6 +5,7 @@
 ---
 
 ## ⚡ Quick Start (VS Code mein run karo)
+<img width="1533" height="784" alt="image" src="https://github.com/user-attachments/assets/906fe21a-0d51-4c3b-82e5-7e3fa655ce24" />
 
 ### Step 1 — Dependencies Install karo
 
@@ -106,3 +107,16 @@ POST /api/predict
 - Install **Python** extension
 - Press `Ctrl+`` ` to open terminal
 - Run `python app.py` and open `http://127.0.0.1:5000`
+- ## 📸 Screenshots
+
+### Hero
+<img width="1523" height="784" alt="Hero section" src="https://github.com/user-attachments/assets/9e168098-6f18-405a-b3a4-6fd9c4d89d04" />
+
+### Predictor
+<img width="1533" height="784" alt="Price predictor with live result" src="https://github.com/user-attachments/assets/f101e753-93eb-449e-9d2a-e56a243ca66c" />
+
+### Model Metrics & Coefficients
+<img width="1533" height="784" alt="Model performance metrics and feature coefficients" src="https://github.com/user-attachments/assets/ae59b422-fe8b-4869-afd0-2fb9105085d9" />
+
+### Raw Training Data
+<img width="1533" height="784" alt="image" src="https://github.com/user-attachments/assets/af58879b-42fd-4dc3-9af9-8e1535cdaa8e" />
