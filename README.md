@@ -113,7 +113,7 @@ POST /api/predict
 <img width="1523" height="784" alt="Hero section" src="https://github.com/user-attachments/assets/9e168098-6f18-405a-b3a4-6fd9c4d89d04" />
 
 ### Predictor
-<img width="1533" height="784" alt="Price predictor with live result" src="https://github.com/user-attachments/assets/f101e753-93eb-449e-9d2a-e56a243ca66c" />
+<img width="1530" height="784" alt="image" src="https://github.com/user-attachments/assets/195e821b-22d3-490a-9b65-31f71c598b4c" />
 
 ### Model Metrics & Coefficients
 <img width="1533" height="784" alt="Model performance metrics and feature coefficients" src="https://github.com/user-attachments/assets/ae59b422-fe8b-4869-afd0-2fb9105085d9" />
