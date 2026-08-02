@@ -110,7 +110,7 @@ POST /api/predict
 - ## 📸 Screenshots
 
 ### Hero
-<img width="1523" height="784" alt="Hero section" src="https://github.com/user-attachments/assets/9e168098-6f18-405a-b3a4-6fd9c4d89d04" />
+<img width="1533" height="784" alt="image" src="https://github.com/user-attachments/assets/906fe21a-0d51-4c3b-82e5-7e3fa655ce24" />
 
 ### Predictor
 <img width="1530" height="784" alt="image" src="https://github.com/user-attachments/assets/195e821b-22d3-490a-9b65-31f71c598b4c" />
@@ -119,4 +119,5 @@ POST /api/predict
 <img width="1533" height="784" alt="Model performance metrics and feature coefficients" src="https://github.com/user-attachments/assets/ae59b422-fe8b-4869-afd0-2fb9105085d9" />
 
 ### Raw Training Data
-<img width="1533" height="784" alt="image" src="https://github.com/user-attachments/assets/af58879b-42fd-4dc3-9af9-8e1535cdaa8e" />
+<img width="1523" height="784" alt="image" src="https://github.com/user-attachments/assets/2ece0fe2-047a-43df-a582-31c93bf37d97" />
+
